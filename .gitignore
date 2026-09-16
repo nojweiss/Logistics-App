@@ -30,3 +30,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Keep all environment variants private
+.env.*
+!.env.example
+coverage/
+test-results/
