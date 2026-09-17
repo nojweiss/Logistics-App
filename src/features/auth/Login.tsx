@@ -52,16 +52,18 @@ export function Login() {
         ) : (
           <form onSubmit={submit}>
             <label>
-              Email
+              Username or Email
               <input
                 name="email"
-                type="email"
+                type="text"
+                autoCapitalize="none"
+                autoCorrect="off"
                 autoComplete="username"
                 required
               />
             </label>
             <label>
-              Password
+              Password or PIN
               <input
                 name="password"
                 type="password"

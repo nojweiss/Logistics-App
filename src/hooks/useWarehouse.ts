@@ -1,3 +1,4 @@
+import type { RealtimeScope } from "../lib/realtime";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { errorMessage } from "../lib/metrics";
 import { warehouse } from "../services/warehouse";
@@ -11,6 +12,7 @@ export function useWarehouse<T>(
   key: string,
   loader: () => Promise<T>,
   orderId?: string,
+  scope: RealtimeScope = orderId ? "order" : "orders",
 ) {
   const [snapshot, setSnapshot] = useState<Snapshot<T> | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -46,6 +48,7 @@ export function useWarehouse<T>(
       orderId,
       () => void refresh(),
       setLive,
+      scope,
     );
     const resume = () => {
       setOnline(navigator.onLine);
@@ -65,7 +68,7 @@ export function useWarehouse<T>(
       window.removeEventListener("offline", resume);
       document.removeEventListener("visibilitychange", resume);
     };
-  }, [refresh, orderId, invalidate]);
+  }, [refresh, orderId, invalidate, scope]);
   async function act(action: () => Promise<void>, success: string) {
     if (actionPending.current || !online) return;
     actionPending.current = true;

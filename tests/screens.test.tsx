@@ -81,7 +81,10 @@ describe("Role-specific rendering", () => {
     expect(html).toContain("Sample product");
     expect(html).toContain("DEMO-SKU");
     expect(html).toContain("loose / packs");
-    expect((html.match(/disabled=""/g) || []).length).toBe(2);
+    expect(html).toContain("LOW stock");
+    expect(html).toContain("ZERO stock");
+    expect(html).not.toContain("Mark picked");
+    expect((html.match(/disabled=""/g) || []).length).toBe(3);
   });
   it("rejects a lead navigating to another row", () => {
     const html = renderToStaticMarkup(

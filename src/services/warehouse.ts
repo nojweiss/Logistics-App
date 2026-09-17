@@ -1,11 +1,10 @@
+import {
+  realtimeTables,
+  coalescedRefresh,
+  type RealtimeScope,
+} from "../lib/realtime";
 import { db } from "../lib/supabase";
-import type {
-  Order,
-  OrderDetail,
-  OrderItem,
-  PickRow,
-  PickSession,
-} from "../lib/types";
+import type { Order, OrderDetail } from "../lib/types";
 export const warehouse = {
   async orders(date: string): Promise<Order[]> {
     const { data, error } = await db()
@@ -17,19 +16,10 @@ export const warehouse = {
     return data as Order[];
   },
   async detail(id: string): Promise<OrderDetail> {
-    const responses = await Promise.all([
-      db().from("orders").select("*").eq("id", id).single(),
-      db().from("pick_rows").select("*").order("sort_order"),
-      db().from("order_items").select("*").eq("order_id", id).order("sku"),
-      db().from("pick_sessions").select("*").eq("order_id", id),
-    ]);
-    for (const response of responses) if (response.error) throw response.error;
-    return {
-      order: responses[0].data as Order,
-      rows: responses[1].data as PickRow[],
-      items: responses[2].data as OrderItem[],
-      sessions: responses[3].data as PickSession[],
-    };
+    const { data, error } = await db().rpc("order_bundle", { p_order: id });
+    if (error) throw error;
+    if (!data?.order) throw new Error("Order unavailable or access denied.");
+    return data as OrderDetail;
   },
   async clockOffset(): Promise<number> {
     const before = Date.now();
@@ -44,7 +34,7 @@ export const warehouse = {
   async rowAction(
     orderId: string,
     rowId: string,
-    action: "START" | "COMPLETE",
+    action: "START" | "COMPLETE" | "CLEAR_START" | "CLEAR_COMPLETE",
   ) {
     await call("row_action", {
       p_order: orderId,
@@ -59,16 +49,19 @@ export const warehouse = {
     orderId: string | undefined,
     refresh: () => void,
     connection: (connected: boolean) => void,
+    scope: RealtimeScope = orderId ? "order" : "orders",
   ) {
     const channel = db().channel(`floor-${crypto.randomUUID()}`);
-    for (const table of ["orders", "order_items", "pick_sessions"]) {
-      const filter = orderId
-        ? `${table === "orders" ? "id" : "order_id"}=eq.${orderId}`
-        : undefined;
+    const scheduled = coalescedRefresh(refresh);
+    for (const table of realtimeTables(scope)) {
+      const filter =
+        orderId && table !== "workers"
+          ? `${table === "orders" ? "id" : "order_id"}=eq.${orderId}`
+          : undefined;
       channel.on(
         "postgres_changes",
         { event: "*", schema: "public", table, ...(filter ? { filter } : {}) },
-        refresh,
+        scheduled.trigger,
       );
     }
     channel.subscribe((status) => {
@@ -76,6 +69,7 @@ export const warehouse = {
       if (status === "SUBSCRIBED") refresh();
     });
     return () => {
+      scheduled.cancel();
       void db().removeChannel(channel);
     };
   },

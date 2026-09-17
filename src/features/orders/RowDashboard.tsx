@@ -1,3 +1,4 @@
+import { bottleneck } from "../../lib/workflow";
 import { Link } from "react-router-dom";
 import type { OrderDetail } from "../../lib/types";
 import { progress } from "../../lib/metrics";
@@ -39,6 +40,7 @@ export function RowDashboard({
                   detail.items.filter((item) => item.pick_row_id === row.id),
                   !!session?.row_completed_at,
                 );
+                const lag = bottleneck(detail, row.id);
                 const status = session?.row_completed_at
                   ? "COMPLETE"
                   : session?.row_started_at
@@ -46,7 +48,7 @@ export function RowDashboard({
                     : "PLANNED";
                 return (
                   <Link
-                    className={`row-card ${status === "COMPLETE" ? "finished" : ""}`}
+                    className={`row-card ${status === "COMPLETE" ? "finished" : ""} ${lag.level}`}
                     key={row.id}
                     to={`/orders/${detail.order.id}/rows/${row.id}`}
                   >
@@ -71,6 +73,27 @@ export function RowDashboard({
                       </span>
                       <strong>{p.percent}%</strong>
                     </div>
+                    <p className="row-team">
+                      {detail.workflow?.team
+                        .filter((t) => t.current_row_id === row.id)
+                        .map((t) => t.initials_snapshot)
+                        .join(" · ") || "Team not selected"}
+                    </p>
+                    <p>
+                      {session?.clearing_completed_at
+                        ? "Clearing complete"
+                        : session?.clearing_started_at
+                          ? "Clearing in progress"
+                          : session?.row_completed_at
+                            ? "Awaiting clearing"
+                            : "Picking"}
+                    </p>
+                    {lag.level !== "normal" && (
+                      <small>
+                        {lag.done}/{lag.others} other applicable rows finished
+                        picking
+                      </small>
+                    )}
                     <div className="row-foot">
                       <span>
                         {p.pickedCases}/{p.cases} cases picked

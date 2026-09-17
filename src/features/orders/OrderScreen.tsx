@@ -1,13 +1,15 @@
 import { useCallback } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useAuth } from "../auth/context";
 import { warehouse } from "../../services/warehouse";
 import { useWarehouse } from "../../hooks/useWarehouse";
 import { Badge, Feedback, SyncStatus } from "../../components/Status";
 import { RowDashboard } from "./RowDashboard";
 import { PickRow } from "./PickRow";
-export function OrderScreen() {
-  const { id = "", rowId } = useParams();
+import { Verification } from "./Verification";
+import { ManagerOverview } from "./ManagerOverview";
+export function OrderScreen({ task }: { task?: "REPACK" | "FULL_CASE" }) {
+  const { id = "", rowId, groupId } = useParams();
   const { profile } = useAuth();
   const manager = profile?.role !== "PICK_LEAD";
   const load = useCallback(() => warehouse.detail(id), [id]);
@@ -17,9 +19,6 @@ export function OrderScreen() {
   return (
     <>
       <SyncStatus {...state} />
-      <Link className="back" to={rowId ? `/orders/${id}` : "/"}>
-        ← &nbsp; {rowId ? "Order overview" : "Today’s orders"}
-      </Link>
       <Feedback {...state} />
       {!data ? (
         <div className="empty" role="status">
@@ -71,7 +70,16 @@ export function OrderScreen() {
               )}
             </div>
           )}
-          {selectedRow ? (
+          {task && groupId ? (
+            <Verification
+              key={`${id}-${groupId}-${task}`}
+              detail={data}
+              group={groupId}
+              mode={task}
+              blocked={state.blocked}
+              act={state.act}
+            />
+          ) : selectedRow ? (
             <PickRow
               detail={data}
               rowId={selectedRow}
@@ -80,7 +88,14 @@ export function OrderScreen() {
               act={state.act}
             />
           ) : manager ? (
-            <RowDashboard detail={data} offset={state.offset} />
+            <>
+              <RowDashboard detail={data} offset={state.offset} />
+              <ManagerOverview
+                detail={data}
+                blocked={state.blocked}
+                act={state.act}
+              />
+            </>
           ) : (
             <div className="notice">
               No pick row assigned. Ask your administrator to assign your

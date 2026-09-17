@@ -694,3 +694,265 @@ main {
     transition: none !important;
   }
 }
+
+/* Operational workflow: touch targets, compact completed rows, independent quantities. */
+.panel,
+.product-card {
+  background: #fff;
+  border: 1px solid #d8e0d8;
+  border-radius: 12px;
+  padding: 18px;
+  margin: 14px 0;
+  min-width: 0;
+}
+.product-card h3 {
+  margin: 0 0 10px;
+  font-size: 1.12rem;
+}
+.product-card summary,
+.panel summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 700;
+}
+.product-card summary span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.product-card summary b {
+  flex-shrink: 0;
+  color: #216046;
+}
+.product-card summary small {
+  display: block;
+  font-weight: 400;
+  color: #617269;
+  margin-top: 5px;
+}
+.product-card.picked {
+  background: #eff5ee;
+  padding: 10px 16px;
+}
+.product-card[open] summary {
+  border-bottom: 1px solid #d8e0d8;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.button,
+button {
+  min-height: 44px;
+}
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border: 1px solid #cbd7ce;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+}
+.initial-button {
+  background: #174c38;
+  color: #fff;
+  font-size: 1.2rem;
+  min-width: 58px;
+  min-height: 50px;
+}
+.low-button {
+  background: #fff1c5;
+  color: #674300;
+  border-color: #d9ae3a;
+}
+.zero-button {
+  background: #ffe3de;
+  color: #9e231d;
+  border-color: #da928b;
+}
+.inline-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+.inline-form label,
+.search-label {
+  display: grid;
+  gap: 6px;
+}
+input,
+select,
+textarea {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+select,
+textarea {
+  font: inherit;
+  width: 100%;
+  border: 1px solid #bbc9bd;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+  color: #192c22;
+}
+.check-label {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.check-label input {
+  width: 22px;
+  min-height: 22px;
+}
+.catalog-list .panel {
+  display: grid;
+  gap: 8px;
+}
+.catalog-list h3,
+.catalog-list p {
+  margin: 4px 0;
+}
+.group-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.group-grid .panel {
+  margin: 0;
+}
+.count-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.count-grid strong {
+  display: block;
+  font-size: 2.2rem;
+  color: #20523d;
+}
+.count-grid div {
+  font-size: 0.85rem;
+}
+.box-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+}
+.box-tabs small {
+  display: block;
+  font-size: 0.65rem;
+}
+.box-tabs .selected {
+  background: #194e39;
+  color: white;
+}
+.box-panel {
+  padding: 24px;
+  border-radius: 12px;
+  border: 2px solid #266c4d;
+  background: #f1f7ed;
+  margin-bottom: 24px;
+}
+.box-label {
+  font-size: 4rem;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -3px;
+  color: #194e39;
+  margin-bottom: 12px;
+}
+.discrepancy {
+  background: #fff0dc;
+  border-left: 4px solid #b1641c;
+  padding: 12px;
+  color: #693700;
+  border-radius: 6px;
+}
+.inventory-card.zero {
+  border-top: 4px solid #b72e25;
+}
+.inventory-card.low {
+  border-top: 4px solid #d6a527;
+}
+.row-card.caution {
+  border: 2px solid #c79922;
+  background: #fff9df;
+}
+.row-card.urgent {
+  border: 2px solid #c7473d;
+  background: #fff0ed;
+}
+.row-team {
+  font-weight: 700;
+  color: #315c45;
+}
+.ready-text {
+  color: #236b45;
+}
+.topbar .back {
+  margin: 0;
+}
+.bottom-nav {
+  flex-wrap: wrap;
+}
+.bottom-nav a {
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .group-grid {
+    grid-template-columns: 1fr;
+  }
+  .product-card,
+  .panel {
+    padding: 14px;
+  }
+  .product-card.picked {
+    padding: 8px 12px;
+  }
+  .topbar {
+    gap: 8px;
+  }
+  .topbar .account {
+    font-size: 0.8rem;
+  }
+  .bottom-nav a {
+    font-size: 0.72rem;
+    padding: 8px 6px;
+  }
+  .count-grid strong {
+    font-size: 1.8rem;
+  }
+  .section-heading {
+    flex-wrap: wrap;
+  }
+  .box-panel {
+    padding: 18px;
+  }
+}
+
+.inline-form label {
+  margin: 0;
+}
+.inline-form .fine-print {
+  margin: 8px 0;
+}
+.product-card .fine-print {
+  text-align: left;
+  margin: 12px 0;
+}
+.topbar:has(.back) {
+  height: 68px;
+}

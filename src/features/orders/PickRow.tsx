@@ -1,35 +1,53 @@
+import { Link } from "react-router-dom";
 import type { OrderDetail } from "../../lib/types";
+import type { Act } from "../../lib/operations";
 import { useAuth } from "../auth/context";
 import { progress } from "../../lib/metrics";
+import { responsibility } from "../../lib/workflow";
 import { Timer } from "../../components/Status";
 import { warehouse } from "../../services/warehouse";
-interface Props {
+import { PickProduct } from "./PickProduct";
+import { Team } from "./Team";
+export function PickRow({
+  detail,
+  rowId,
+  blocked,
+  offset,
+  act,
+}: {
   detail: OrderDetail;
   rowId: string;
   blocked: boolean;
   offset: number;
-  act: (action: () => Promise<void>, success: string) => Promise<void>;
-}
-export function PickRow({ detail, rowId, blocked, offset, act }: Props) {
-  const { profile } = useAuth();
-  if (profile?.role === "PICK_LEAD" && profile.assigned_row_id !== rowId)
-    return (
-      <div className="error" role="alert">
-        This row is not assigned to you.
-      </div>
-    );
-  if (!detail.rows.some((row) => row.id === rowId))
-    return <div className="error">Pick row not found.</div>;
-  const items = detail.items.filter((item) => item.pick_row_id === rowId);
-  const session = detail.sessions.find((row) => row.pick_row_id === rowId);
-  const p = progress(items, !!session?.row_completed_at);
-  const running = !!session?.row_started_at && !session.row_completed_at;
-  const disabled = blocked || detail.order.status !== "ACTIVE";
+  act: Act;
+}) {
+  const { profile } = useAuth(),
+    manager = profile?.role !== "PICK_LEAD";
+  if (!manager && profile?.assigned_row_id !== rowId)
+    return <div className="error">This row is not assigned to you.</div>;
+  const row = detail.rows.find((r) => r.id === rowId);
+  if (!row) return <div className="error">Pick row not found.</div>;
+  const items = detail.items.filter((i) => i.pick_row_id === rowId),
+    session = detail.sessions.find((s) => s.pick_row_id === rowId);
+  const p = progress(items, !!session?.row_completed_at),
+    running = !!session?.row_started_at && !session.row_completed_at;
+  const disabled = blocked || detail.order.status !== "ACTIVE",
+    job = responsibility(row);
+  const team = (detail.workflow?.team ?? []).filter(
+    (t) =>
+      t.current_row_id === rowId &&
+      detail.workflow?.workers.some((w) => w.id === t.worker_id && w.active),
+  );
+  const action = (
+    kind: "START" | "COMPLETE" | "CLEAR_START" | "CLEAR_COMPLETE",
+    message: string,
+  ) =>
+    void act(() => warehouse.rowAction(detail.order.id, rowId, kind), message);
   return (
     <>
       <div className="pick-header">
         <div>
-          <div className="eyebrow">{rowId} · ROW ELAPSED</div>
+          <div className="eyebrow">{rowId} · PICKING TIME</div>
           <Timer
             start={session?.row_started_at ?? null}
             end={session?.row_completed_at ?? null}
@@ -48,66 +66,78 @@ export function PickRow({ detail, rowId, blocked, offset, act }: Props) {
         <button
           className="primary full row-action"
           disabled={disabled}
-          onClick={() =>
-            void act(
-              () => warehouse.rowAction(detail.order.id, rowId, "START"),
-              `${rowId} started.`,
-            )
-          }
+          onClick={() => action("START", rowId + " picking started.")}
         >
-          ▶ &nbsp; Start {rowId}
+          Start {rowId}
         </button>
       )}
+      {session?.row_completed_at && (
+        <section className="panel">
+          <h2>
+            {session.clearing_completed_at
+              ? "Clearing complete"
+              : "Clear the row"}
+          </h2>
+          <Timer
+            start={session.clearing_started_at ?? null}
+            end={session.clearing_completed_at ?? null}
+            offset={offset}
+          />
+          {!session.clearing_started_at ? (
+            <button
+              disabled={disabled}
+              onClick={() => action("CLEAR_START", "Clearing started.")}
+            >
+              Start clearing
+            </button>
+          ) : !session.clearing_completed_at ? (
+            <button
+              className="primary"
+              disabled={disabled}
+              onClick={() =>
+                action(
+                  "CLEAR_COMPLETE",
+                  "Clearing complete. Verification is available.",
+                )
+              }
+            >
+              Complete clearing
+            </button>
+          ) : (
+            job && (
+              <Link
+                className="button primary"
+                to={`/orders/${detail.order.id}/${job.mode === "REPACK" ? "repack" : "full-cases"}/${job.group}`}
+              >
+                Continue to{" "}
+                {job.mode === "REPACK" ? "repack" : "full-case verification"} ·
+                Group {job.group}
+              </Link>
+            )
+          )}
+        </section>
+      )}
+      <Team detail={detail} rowId={rowId} blocked={disabled} act={act} />
       <div className="section-heading">
         <h2>Pick sheet</h2>
         <span>{p.cases} full cases total</span>
       </div>
       <div className="pick-list">
         {items.map((item) => (
-          <article
-            className={`pick-item ${item.completed_at ? "picked" : ""}`}
+          <PickProduct
             key={item.id}
-          >
-            <div className="product-name">
-              <small>{item.sku}</small>
-              <h3>{item.product_name}</h3>
-            </div>
-            <div className="quantities">
-              <div>
-                <strong>{item.full_case_qty}</strong>
-                <span>full cases</span>
-              </div>
-              <div>
-                <strong>{item.loose_qty}</strong>
-                <span>loose / packs</span>
-              </div>
-            </div>
-            <button
-              className={item.completed_at ? "undo" : "primary"}
-              disabled={disabled || !running}
-              aria-label={
-                item.completed_at
-                  ? `Undo ${item.product_name}`
-                  : `Mark ${item.product_name} picked`
-              }
-              onClick={() =>
-                void act(
-                  () => warehouse.completeItem(item.id, !item.completed_at),
-                  item.completed_at
-                    ? "Pick undone. Audit history retained."
-                    : "Product marked picked.",
-                )
-              }
-            >
-              {item.completed_at ? "✓ Picked · Undo" : "Mark picked"}
-            </button>
-          </article>
+            item={item}
+            team={team}
+            disabled={disabled}
+            canPick={running || (manager && !!item.completed_at)}
+            canUndo={running}
+            act={act}
+          />
         ))}
       </div>
       {!items.length && (
-        <div className="empty bordered">
-          No products required from this row. Start and complete it to
-          acknowledge.
+        <div className="empty">
+          No products required. This row does not hold up group readiness.
         </div>
       )}
       {running && (
@@ -115,28 +145,16 @@ export function PickRow({ detail, rowId, blocked, offset, act }: Props) {
           className="primary full row-action"
           disabled={disabled || p.done !== p.total}
           onClick={() => {
-            if (
-              window.confirm(
-                `Complete ${rowId}? Item changes are locked once this row is complete.`,
-              )
-            )
-              void act(
-                () => warehouse.rowAction(detail.order.id, rowId, "COMPLETE"),
-                `${rowId} complete.`,
-              );
+            if (window.confirm("Finish picking and start clearing this row?"))
+              action("COMPLETE", "Picking complete. Clearing started.");
           }}
         >
-          ✓ &nbsp; Complete row
+          Complete picking · Start clearing
         </button>
       )}
-      {session?.row_completed_at && (
-        <div className="success" role="status">
-          ✓ &nbsp; Row complete. Thank you, team.
-        </div>
-      )}
       <p className="fine-print">
-        Undo is available while the row is running. Every action retains its
-        event history.
+        Tap worker initials to record a pick. Expand picked products to review
+        or correct. Picking and clearing have separate timers.
       </p>
     </>
   );

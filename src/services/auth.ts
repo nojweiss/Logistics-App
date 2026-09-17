@@ -1,4 +1,5 @@
 import { db } from "../lib/supabase";
+import { normalizeLogin } from "../lib/workflow";
 import type { Profile } from "../lib/types";
 export const auth = {
   async currentUser() {
@@ -29,7 +30,10 @@ export const auth = {
     return profile;
   },
   async signIn(email: string, password: string) {
-    const { error } = await db().auth.signInWithPassword({ email, password });
+    const { error } = await db().auth.signInWithPassword({
+      email: normalizeLogin(email),
+      password,
+    });
     if (error) throw error;
   },
   async signOut() {
